@@ -8,6 +8,7 @@ set -e
 lein test
 
 # add git sha1 into resource file
+mkdir -p resources
 git_branch=`git branch | grep \* | cut -d ' ' -f2`
 git_short_sha1=`git rev-parse --short HEAD`
 git_branch_short_sha1="$git_branch-$git_short_sha1"

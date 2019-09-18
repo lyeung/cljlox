@@ -31,3 +31,5 @@ log
 # ides
 *.idea
 
+# vi swap files
+*swap

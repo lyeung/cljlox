@@ -1,24 +1,35 @@
 (ns cljlox.scanner)
 
-(def app-state
-  "Application state."
-  (atom {:had-error false
+(defn new-app-state
+  "New app state."
+  []
+  {:had-error false
          :start 0
          :current 0
-         :line 1}))
+         :line 1})
 
-(def output-state
-  "Output state."
-  (atom {:tokens []}))
+(def app-state
+  "Application state."
+  (atom (new-app-state)))
 
 (defn reset-app-state!
   "Reset app-state to original state."
   []
-  (reset! app-state 
-          {:had-error false
-           :start 0
-           :current 0
-           :line 1}))
+  (reset! app-state (new-app-state)))
+
+(defn new-output-state
+  "New output state."
+  []
+  {:tokens []})
+
+(def output-state
+  "Output state."
+  (atom (new-output-state)))
+
+(defn reset-output-state!
+  "Reset output state."
+  []
+  (reset! output-state (new-output-state)))
 
 
 (defn had-error?
@@ -36,7 +47,7 @@
    to true."
   [line where message]
   (println 
-    (str "[" line "] Error" where
+    (str "[" line "] Error " where
          ": " message))
   (swap! app-state assoc :had-error true))
 
@@ -93,15 +104,15 @@
   [source] 
   (swap! app-state update-in [:current] inc)
   (.charAt source 
-           (:current @app-state)))
+           (dec (:current @app-state))))
 
 (defn add-token
   ([source token-type] 
-   (add-token token-type nil))
+   (add-token source token-type nil))
   ([source token-type literal] 
-   (add-token token-type literal
+   (add-token source token-type literal
               (:start @app-state)
-              (dec (:current @app-state))
+              (:current @app-state)
               (:line @app-state)))
   ([source token-type literal start current line] 
    (let [text (subs source start current)]
@@ -111,7 +122,83 @@
                                  literal
                                  line))))))
 
+(defn match?
+  [source current expected]
+  (and (not (is-at-end? source current))
+            (= expected 
+               (.charAt source current))))
+
+(defn match!
+  ([source expected]
+   (match! source 
+           (:current 
+             @app-state)
+           expected))
+
+  ([source current expected]
+   (let [matched (match?
+                 source current expected)]
+     (if matched
+       (swap! app-state update-in [:current] inc))
+
+     matched)))
+
+(defn peek
+  ([source]
+   (peek source (:current @app-state)))
+  ([source current]
+   (if (is-at-end? source
+                   nil)
+     (.charAt source current))))
+
 (defn scan-tokens
+  "Scan tokens by advancing the current position."
   [source]
-  ["stubbed" "for" "now"])
+  (let [c (advance source)]
+    (cond
+      (= c \() (add-token source :left-paren)
+      (= c \)) (add-token source :right-paren)
+      (= c \{) (add-token source :left-brace)
+      (= c \}) (add-token source :right-brace)
+      (= c \,) (add-token source :comma)
+      (= c \.) (add-token source :dot)
+      (= c \-) (add-token source :minus)
+      (= c \+) (add-token source :plus)
+      (= c \;) (add-token source :semicolon)
+      (= c \*) (add-token source :star)
+      (= c \!) (add-token 
+                 source
+                 (cond 
+                   (match! source \=) :bang-equal
+                   :else :bang))
+      (= c \=) (add-token
+                 source
+                 (cond
+                   (match! source \=) :equal-equal
+                   :else :equal))
+      (= c \<) (add-token
+                 source
+                 (cond
+                   (match! source \=) :less-equal
+                   :else :less))
+      (= c \>) (add-token
+                 source
+                 (cond
+                   (match! source \=) :greater-equal
+                   :else :greater))
+      (= c \/) (if (match! source \/)
+                 (while (and (not= (peek) \newline)
+                             (not (is-at-end? source)))
+                   (do
+                     (advance)))
+                 (add-token source :slash))
+      (= c \space) (@output-state)
+      (= c \return) (@output-state)
+      (= c \tab) (@output-state)
+      (= c \newline) (do
+                       (swap! app-state update-in
+                              [:line] inc)
+                       @output-state)
+      :else (error (:line @app-state)
+                   "Unexpected character."))))
 

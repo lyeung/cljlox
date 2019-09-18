@@ -32,4 +32,4 @@ log
 *.idea
 
 # vi swap files
-*swap
+*.swp

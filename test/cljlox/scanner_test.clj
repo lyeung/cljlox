@@ -39,12 +39,60 @@
     (is (false? (scanner/is-at-end? "hello" 0)))
     (is (false? (scanner/is-at-end? "hello" 4)))))
 
+(deftest match?-test
+  (let [source "foo"]
+    (testing "matches"
+      (is (true?
+            (scanner/match?
+              source 0 \f)))
+      (is (true?
+            (scanner/match?
+              source 1 \o)))
+      (is (true?
+            (scanner/match?
+              source 2 \o))))
+    (testing "does not match"
+      (is (false?
+            (scanner/match?
+              source 3 nil))))))
+
+(deftest match!-test
+  (let [source "foo"]
+    (testing "matches"
+      (is (true?
+            (scanner/match!
+              source 0 \f)))
+      (is (true?
+            (scanner/match!
+              source 1 \o)))
+      (is (true?
+            (scanner/match!
+              source 2 \o))))
+    (testing "does not match"
+      (is (false?
+            (scanner/match!
+              source 3 \z))))))
+
 (deftest advance-test
   (testing "increments and get character"
     (is (= \H
            (scanner/advance "HELP")))
     (is (= \E
            (scanner/advance "HELP")))))
+
+(deftest peek-test
+  (let [source "foo\n"]
+    (testing "is not at end"
+      (is (= \f
+             (scanner/peek source 0)))
+      (is (= \o
+             (scanner/peek source 1)))
+      (is (= \o
+             (scanner/peek source 2)))
+      (is (= \newline
+             (scanner/peek source 3))))
+    (testing "is at end"
+      (is (nil? (scanner/peek source 4))))))
 
 (deftest add-token-test
   (testing "add token"
@@ -60,17 +108,21 @@
                               100)))))
 
 (defn scan-verify
-  [source
-   token-type
-   lexeme
-   literal]
-  (let [result (scanner/scan-tokens source)]
-    (is (= {:tokens
-            [{:token-type token-type
-              :lexeme lexeme
-              :literal literal
-              :line 1}]}
-           result))))
+  ([source]
+   (is (nil?
+         (scanner/scan-tokens
+           source))))
+  ([source
+    token-type
+    lexeme
+    literal]
+   (let [result (scanner/scan-tokens source)]
+     (is (= {:tokens
+             [{:token-type token-type
+               :lexeme lexeme
+               :literal literal
+               :line 1}]}
+            result)))))
 
 (deftest scan-tokens-left-paren-test
   (testing "scan left paren"
@@ -197,4 +249,19 @@
                  :greater-equal
                  ">="
                  nil)))
+
+(deftest scan-tokens-slash-test
+  (testing "scan slash"
+    (scan-verify "/foo"
+                 :slash
+                 "/"
+                 nil)))
+
+(deftest scan-tokens-slash-slash-test
+  (testing "scan slash slash"
+    (scan-verify "//foobar")))
+
+(deftest scan-tokens-slash-slash-newline-test
+  (testing "scan slash slash newline"
+    (scan-verify "//foob\nar")))
 

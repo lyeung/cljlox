@@ -93,10 +93,12 @@
 
 (defn is-at-end?
   "Is current position at the end of source?"
-  ([source] (is-at-end? 
-              source (:current @app-state)))
-  ([source current] (>= 
-                      current (count source))))
+  ([source] 
+   (is-at-end? 
+    source (:current @app-state)))
+  ([source current] 
+   (or (nil? current)
+       (>= current (count source)))))
 
 (defn advance
   "Increments current variable and returns 
@@ -147,8 +149,8 @@
   ([source]
    (peek source (:current @app-state)))
   ([source current]
-   (if (is-at-end? source
-                   nil)
+   (if (is-at-end? source current)
+     nil
      (.charAt source current))))
 
 (defn scan-tokens
@@ -187,10 +189,12 @@
                    (match! source \=) :greater-equal
                    :else :greater))
       (= c \/) (if (match! source \/)
-                 (while (and (not= (peek) \newline)
-                             (not (is-at-end? source)))
-                   (do
-                     (advance)))
+                 (do 
+                   (while 
+                     (and 
+                       (not= (peek source) \newline)
+                       (not (is-at-end? source)))
+                     (advance source)))
                  (add-token source :slash))
       (= c \space) (@output-state)
       (= c \return) (@output-state)
